@@ -373,20 +373,31 @@ def dataset_report_card(df, target_col=None, problem=None, comparison=None) -> d
     summary     = dataset_summary(df)
     quality     = compute_quality_score(df)
     missing_pct = round(df.isnull().mean() * 100, 2)
-    num_df      = df.select_dtypes(include=np.number)
+    num_df   = df.select_dtypes(include=np.number)
     top_corr    = []
+    
     if num_df.shape[1] >= 2:
         corr_matrix = num_df.corr().abs()
-        np.fill_diagonal(corr_matrix.values, 0)
-        corr_pairs = corr_matrix.stack().reset_index().rename(columns={"level_0": "Feature A", "level_1": "Feature B", 0: "Correlation"}).sort_values("Correlation", ascending=False)
-        seen = set()
-        for _, row in corr_pairs.iterrows():
-            pair = tuple(sorted([row["Feature A"], row["Feature B"]]))
-            if pair not in seen:
-                seen.add(pair)
-                top_corr.append({"Feature A": row["Feature A"], "Feature B": row["Feature B"], "Correlation": round(row["Correlation"], 4)})
-            if len(top_corr) >= 10:
-                break
+        
+        # SAFETY CHECK: Verify that the resulting matrix is structurally 2D and non-empty
+        if not corr_matrix.empty and corr_matrix.ndim == 2 and corr_matrix.shape[0] >= 2:
+            np.fill_diagonal(corr_matrix.values, 0)
+            corr_pairs = corr_matrix.stack().reset_index().rename(
+                columns={"level_0": "Feature A", "level_1": "Feature B", 0: "Correlation"}
+            ).sort_values("Correlation", ascending=False)
+            
+            seen = set()
+            for _, row in corr_pairs.iterrows():
+                pair = tuple(sorted([row["Feature A"], row["Feature B"]]))
+                if pair not in seen:
+                    seen.add(pair)
+                    top_corr.append({
+                        "Feature A": row["Feature A"], 
+                        "Feature B": row["Feature B"], 
+                        "Correlation": round(row["Correlation"], 4)
+                    })
+                if len(top_corr) >= 10:
+                    break
     return {
         "generated_at":     datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "overview":         summary,
