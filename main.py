@@ -211,7 +211,7 @@ def compute_quality_score(df: pd.DataFrame) -> int:
 def fix_dtypes(df):
     df = df.copy()
     for col in df.select_dtypes(include="object").columns:
-        df[col] = pd.to_numeric(df[col], errors="ignore")
+        df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
 
 def handle_missing_values(df):
