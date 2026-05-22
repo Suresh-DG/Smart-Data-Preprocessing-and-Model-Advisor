@@ -594,11 +594,16 @@ def plot_distributions(df: pd.DataFrame, max_cols: int = 6):
     num_cols = list(df.select_dtypes(include=np.number).columns[:max_cols])
     if not num_cols:
         return None
-    ncols = min(3, len(num_cols))
-    nrows = (len(num_cols) + ncols - 1) // ncols
+    # Filter out columns that are completely empty/NaN
+    valid_cols = [c for c in num_cols if not df[c].dropna().empty]
+    if not valid_cols:
+        return None
+        
+    ncols = min(3, len(valid_cols))
+    nrows = (len(valid_cols) + ncols - 1) // ncols
     fig   = _dark_fig((14, 3.5 * nrows))
     gs    = gridspec.GridSpec(nrows, ncols, figure=fig, hspace=0.45, wspace=0.35)
-    for i, col in enumerate(num_cols):
+    for i, col in enumerate(valid_cols):
         ax = fig.add_subplot(gs[i // ncols, i % ncols])
         _dark_ax(ax)
         ax.hist(df[col].dropna(), bins=30, color=_PURPLE, edgecolor=_BG_AX, alpha=0.85)
@@ -606,16 +611,20 @@ def plot_distributions(df: pd.DataFrame, max_cols: int = 6):
     fig.suptitle("Feature Distributions (Histograms)", color=_TEXT, fontsize=13, y=1.01)
     return fig
 
-
 def plot_boxplots(df: pd.DataFrame, max_cols: int = 6):
     num_cols = list(df.select_dtypes(include=np.number).columns[:max_cols])
     if not num_cols:
         return None
-    ncols = min(3, len(num_cols))
-    nrows = (len(num_cols) + ncols - 1) // ncols
+    # Filter out columns that are completely empty/NaN
+    valid_cols = [c for c in num_cols if not df[c].dropna().empty]
+    if not valid_cols:
+        return None
+
+    ncols = min(3, len(valid_cols))
+    nrows = (len(valid_cols) + ncols - 1) // ncols
     fig   = _dark_fig((14, 3.5 * nrows))
     gs    = gridspec.GridSpec(nrows, ncols, figure=fig, hspace=0.5, wspace=0.35)
-    for i, col in enumerate(num_cols):
+    for i, col in enumerate(valid_cols):
         ax = fig.add_subplot(gs[i // ncols, i % ncols])
         _dark_ax(ax)
         ax.boxplot(df[col].dropna(), patch_artist=True,
@@ -628,7 +637,6 @@ def plot_boxplots(df: pd.DataFrame, max_cols: int = 6):
     fig.suptitle("Boxplots — Outlier Overview", color=_TEXT, fontsize=13, y=1.01)
     return fig
 
-
 def plot_violin(df: pd.DataFrame, max_cols: int = 6):
     """Violin plots — show full distribution shape + quartiles."""
     num_cols = list(df.select_dtypes(include=np.number).columns[:max_cols])
@@ -638,10 +646,20 @@ def plot_violin(df: pd.DataFrame, max_cols: int = 6):
     nrows = (len(num_cols) + ncols - 1) // ncols
     fig   = _dark_fig((14, 3.5 * nrows))
     gs    = gridspec.GridSpec(nrows, ncols, figure=fig, hspace=0.5, wspace=0.35)
+    
     for i, col in enumerate(num_cols):
         ax = fig.add_subplot(gs[i // ncols, i % ncols])
         _dark_ax(ax)
+        
+        # Drop missing values
         data = df[col].dropna()
+        
+        # SAFETY CHECK: If the column is empty or contains no elements, skip plotting it
+        if data.empty or len(data) == 0:
+            ax.text(0.5, 0.5, "No numerical data", ha="center", va="center", color=_MUTED)
+            ax.set_title(col, fontsize=10)
+            continue
+            
         parts = ax.violinplot(data, showmedians=True)
         for pc in parts["bodies"]:
             pc.set_facecolor(_PURPLE)
@@ -651,20 +669,24 @@ def plot_violin(df: pd.DataFrame, max_cols: int = 6):
             parts[key].set_color(_MUTED)
         ax.set_title(col, fontsize=10)
         ax.set_xticks([])
+        
     fig.suptitle("Violin Plots — Distribution Shape", color=_TEXT, fontsize=13, y=1.01)
     return fig
-
-
 def plot_kde(df: pd.DataFrame, max_cols: int = 6):
     """KDE (Kernel Density Estimate) — smooth distribution curves."""
     num_cols = list(df.select_dtypes(include=np.number).columns[:max_cols])
     if not num_cols:
         return None
-    ncols = min(3, len(num_cols))
-    nrows = (len(num_cols) + ncols - 1) // ncols
+    # Filter out columns that are completely empty/NaN
+    valid_cols = [c for c in num_cols if not df[c].dropna().empty]
+    if not valid_cols:
+        return None
+
+    ncols = min(3, len(valid_cols))
+    nrows = (len(valid_cols) + ncols - 1) // ncols
     fig   = _dark_fig((14, 3.5 * nrows))
     gs    = gridspec.GridSpec(nrows, ncols, figure=fig, hspace=0.45, wspace=0.35)
-    for i, col in enumerate(num_cols):
+    for i, col in enumerate(valid_cols):
         ax = fig.add_subplot(gs[i // ncols, i % ncols])
         _dark_ax(ax)
         data = df[col].dropna()
@@ -673,7 +695,6 @@ def plot_kde(df: pd.DataFrame, max_cols: int = 6):
         ax.set_title(col, fontsize=10)
     fig.suptitle("KDE Density Plots", color=_TEXT, fontsize=13, y=1.01)
     return fig
-
 
 def plot_categorical_bar(df: pd.DataFrame, max_cols: int = 6):
     """Bar charts for top categories in each categorical column."""
